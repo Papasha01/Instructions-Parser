@@ -91,6 +91,10 @@ namespace InstructionsParser_v2
             range3.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
             range3.HorizontalAlignment = Excel.XlHAlign.xlHAlignLeft;
 
+            //Запись необработанных файлов
+            var list_error_files = new List<string>();
+            listBox1.Items.Clear();
+
             //Перебор файлов
             int row_excel = 2;
             foreach (var path in paths)
@@ -101,7 +105,7 @@ namespace InstructionsParser_v2
                     Word.ContentControls contentControls = null;
                     Word.ContentControl contentControl = null;
 
-                    string controlsList = string.Empty;
+                    //string controlsList = string.Empty;
 
                     doc.Activate();
                     doc = WordApp.ActiveDocument;
@@ -109,29 +113,35 @@ namespace InstructionsParser_v2
                     for (int i = 1; i <= contentControls.Count; i++)
                     {
                         contentControl = contentControls[i];
-                        controlsList += String.Format("{0} : {1}{2}",
-                            contentControl.Title, contentControl.Type, Environment.NewLine);
-
-                        if (contentControl.Title.Contains("Производитель"))
+                        //controlsList += String.Format("{0} : {1}{2}", contentControl.Title, contentControl.Type, Environment.NewLine);
+                        if (contentControl.Title != null)
                         {
-                            sheet.Range["A" + (row_excel).ToString()].Value = row_excel - 1;
-                            sheet.Range["B" + (row_excel).ToString()].Value = Path.GetFileName(path);
-                            sheet.Range["C" + (row_excel).ToString()].Value = contentControl.Range.Text.Replace("\r", "\n");
-                            r1 = sheet.Cells[1, 1];
-                            r2 = sheet.Cells[row_excel, 3];
-                            sheet.get_Range(r1, r2).Borders.Color = ColorTranslator.ToOle(Color.Black);
-                            row_excel += 1;
-                            Console.WriteLine(Path.GetFileName(path));
-                            progressBar1.PerformStep();
+                            if (contentControl.Title.Contains("Производитель"))
+                            {
+                                sheet.Range["A" + (row_excel).ToString()].Value = row_excel - 1;
+                                sheet.Range["B" + (row_excel).ToString()].Value = Path.GetFileName(path);
+                                sheet.Range["C" + (row_excel).ToString()].Value = contentControl.Range.Text.Replace("\r", "\n");
+                                r1 = sheet.Cells[1, 1];
+                                r2 = sheet.Cells[row_excel, 3];
+                                sheet.get_Range(r1, r2).Borders.Color = ColorTranslator.ToOle(Color.Black);
+                                row_excel += 1;
+                                Console.WriteLine(Path.GetFileName(path));
+                                listBox1.Items.Insert(0, "OK - " + Path.GetFileName(path));
+                                progressBar1.PerformStep();
+                            }
                         }
+                        else
+                        {
+                            list_error_files.Insert(0,Path.GetFileName(path));
+                        }
+
                     }
 
                     for (int i = 1; i <= contentControls.Count; i++)
                     {
 
                         contentControl = contentControls[i];
-                        controlsList += String.Format("{0} : {1}{2}",
-                            contentControl.Title, contentControl.Type, Environment.NewLine);
+                        //controlsList += String.Format("{0} : {1}{2}", contentControl.Title, contentControl.Type, Environment.NewLine);
                     }
                     doc.Close();
                 }
@@ -139,11 +149,8 @@ namespace InstructionsParser_v2
                 {
                     Console.WriteLine(ex);
                 }
-                finally
-                {
-
-                }
             }
+
             Console.WriteLine();
             excel.Application.ActiveWorkbook.SaveAs(tx_path + @"\word_to_excel_Список_фирм.xlsx", Type.Missing,
   Type.Missing, Type.Missing, Type.Missing, Type.Missing, Excel.XlSaveAsAccessMode.xlNoChange,
@@ -152,6 +159,16 @@ namespace InstructionsParser_v2
             System.Runtime.InteropServices.Marshal.ReleaseComObject(excel);
             progressBar1.Value = paths.Count;
             MessageBox.Show("Готово. Файл сохранен по пути" + tx_path + "word_to_excel_Список_фирм.xlsx");
+
+            //string error_files = "";
+            //listBox1.Items.Clear();
+            //foreach (var item in list_error_files)
+            //{
+            //   listBox1.Items.Insert(0, item);
+            //}
+            
+            //listBox1.Items.Insert(0, "Проблемный:");
+            //MessageBox.Show("Необработанные файлы:\n" + error_files);
             progressBar1.Value = 0;
             button1.Text = "Запустить";
             button1.Enabled = true;
