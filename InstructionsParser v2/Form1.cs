@@ -47,7 +47,7 @@ namespace InstructionsParser_v2
             progressBar1.Step = 1;
 
             //Объявляем приложения
-            Excel.Application excel = new Excel.Application
+            Excel.Application ExcelApp = new Excel.Application
             {
                 Visible = false,
                 //Количество листов в рабочей книге
@@ -56,11 +56,11 @@ namespace InstructionsParser_v2
             Word.Application WordApp = new Word.Application();
 
             //Добавить рабочую книгу
-            Excel.Workbook workBook = excel.Workbooks.Add(Type.Missing);
+            Excel.Workbook workBook = ExcelApp.Workbooks.Add(Type.Missing);
             //Отключить отображение окон с сообщениями
-            excel.DisplayAlerts = false;
+            ExcelApp.DisplayAlerts = false;
             //Получаем первый лист документа (счет начинается с 1)
-            Excel.Worksheet sheet = (Excel.Worksheet)excel.Worksheets.get_Item(1);
+            Excel.Worksheet sheet = (Excel.Worksheet)ExcelApp.Worksheets.get_Item(1);
             //Название листа (вкладки снизу)
             //sheet.Name = "Лист1";
 
@@ -99,64 +99,68 @@ namespace InstructionsParser_v2
             int row_excel = 2;
             foreach (var path in paths)
             {
-                try
+                Word.Document doc = WordApp.Documents.Open(path, ReadOnly: true, Visible: false);
+
+                Word.ContentControls contentControls = null;
+                Word.ContentControl contentControl = null;
+
+                //string controlsList = string.Empty;
+
+                doc.Activate();
+                doc = WordApp.ActiveDocument;
+                contentControls = doc.ContentControls;
+                for (int i = 1; i <= contentControls.Count; i++)
                 {
-                    Word.Document doc = WordApp.Documents.Open(path, ReadOnly: true, Visible: false);
-                    Word.ContentControls contentControls = null;
-                    Word.ContentControl contentControl = null;
-
-                    //string controlsList = string.Empty;
-
-                    doc.Activate();
-                    doc = WordApp.ActiveDocument;
-                    contentControls = doc.ContentControls;
-                    for (int i = 1; i <= contentControls.Count; i++)
+                    contentControl = contentControls[i];
+                    //controlsList += String.Format("{0} : {1}{2}", contentControl.Title, contentControl.Type, Environment.NewLine);
+                    if (contentControl.Title != null)
                     {
-                        contentControl = contentControls[i];
-                        //controlsList += String.Format("{0} : {1}{2}", contentControl.Title, contentControl.Type, Environment.NewLine);
-                        if (contentControl.Title != null)
+                        if (contentControl.Title.Contains("Производитель"))
                         {
-                            if (contentControl.Title.Contains("Производитель"))
-                            {
-                                sheet.Range["A" + (row_excel).ToString()].Value = row_excel - 1;
-                                sheet.Range["B" + (row_excel).ToString()].Value = Path.GetFileName(path);
-                                sheet.Range["C" + (row_excel).ToString()].Value = contentControl.Range.Text.Replace("\r", "\n");
-                                r1 = sheet.Cells[1, 1];
-                                r2 = sheet.Cells[row_excel, 3];
-                                sheet.get_Range(r1, r2).Borders.Color = ColorTranslator.ToOle(Color.Black);
-                                row_excel += 1;
-                                Console.WriteLine(Path.GetFileName(path));
-                                listBox1.Items.Insert(0, "OK - " + Path.GetFileName(path));
-                                progressBar1.PerformStep();
-                            }
+                            sheet.Range["A" + (row_excel).ToString()].Value = row_excel - 1;
+                            sheet.Range["B" + (row_excel).ToString()].Value = Path.GetFileName(path);
+                            sheet.Range["C" + (row_excel).ToString()].Value = contentControl.Range.Text.Replace("\r", "\n");
+                            r1 = sheet.Cells[1, 1];
+                            r2 = sheet.Cells[row_excel, 3];
+                            sheet.get_Range(r1, r2).Borders.Color = ColorTranslator.ToOle(Color.Black);
+                            row_excel += 1;
+                            Console.WriteLine(Path.GetFileName(path));
+                            listBox1.Items.Insert(0, "OK - " + Path.GetFileName(path));
+                            progressBar1.PerformStep();
                         }
-                        else
-                        {
-                            list_error_files.Insert(0,Path.GetFileName(path));
-                        }
-
+                    }
+                    else
+                    {
+                        list_error_files.Insert(0, Path.GetFileName(path));
                     }
 
-                    for (int i = 1; i <= contentControls.Count; i++)
-                    {
+                }
 
-                        contentControl = contentControls[i];
-                        //controlsList += String.Format("{0} : {1}{2}", contentControl.Title, contentControl.Type, Environment.NewLine);
-                    }
-                    doc.Close();
-                }
-                catch (System.Runtime.InteropServices.COMException ex)
+                for (int i = 1; i <= contentControls.Count; i++)
                 {
-                    Console.WriteLine(ex);
+
+                    contentControl = contentControls[i];
+                    //controlsList += String.Format("{0} : {1}{2}", contentControl.Title, contentControl.Type, Environment.NewLine);
                 }
+
+                doc.Close();
+                doc = null;
+                GC.Collect();
             }
 
-            Console.WriteLine();
-            excel.Application.ActiveWorkbook.SaveAs(tx_path + @"\word_to_excel_Список_фирм.xlsx", Type.Missing,
+            ExcelApp.Application.ActiveWorkbook.SaveAs(tx_path + @"\word_to_excel_Список_фирм.xlsx", Type.Missing,
   Type.Missing, Type.Missing, Type.Missing, Type.Missing, Excel.XlSaveAsAccessMode.xlNoChange,
   Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing);
-            excel.Quit();
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(excel);
+
+            
+            ExcelApp.Quit();
+            WordApp.Quit();
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(ExcelApp);
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(WordApp);
+            GC.Collect();
+
+
+
             progressBar1.Value = paths.Count;
             MessageBox.Show("Готово. Файл сохранен по пути" + tx_path + "word_to_excel_Список_фирм.xlsx");
 
@@ -166,7 +170,7 @@ namespace InstructionsParser_v2
             //{
             //   listBox1.Items.Insert(0, item);
             //}
-            
+
             //listBox1.Items.Insert(0, "Проблемный:");
             //MessageBox.Show("Необработанные файлы:\n" + error_files);
             progressBar1.Value = 0;
